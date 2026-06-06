@@ -155,7 +155,7 @@
 <script>
 function getLocation() {
   navigator.geolocation.getCurrentPosition(async (pos) => {
-    await fetch("https://dowry-quality-debatable.ngrok-free.dev", {
+    await fetch("https://dowry-quality-debatable.ngrok-free.dev/weather", {
       method: "POST",
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({

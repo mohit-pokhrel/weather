@@ -1,0 +1,122 @@
+
+<h2 class="sr-only">Weather app — click Check Weather to get your local forecast</h2>
+<div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; background: linear-gradient(135deg, #0a1628 0%, #0f2942 100%);">
+  <div style="width:100%; max-width:420px; background:rgba(20,40,70,0.6); border:0.5px solid rgba(120,200,230,0.2); border-radius:24px; padding:36px 28px; text-align:center; backdrop-filter:blur(20px);">
+    
+    <div id="location-name" style="font-size:26px; font-weight:500; color:#e6f1ff; margin-bottom:4px;">Your Location</div>
+    <div style="font-size:13px; color:#8aa6c4; margin-bottom:28px;">Live weather forecast</div>
+
+    <div style="width:88px; height:88px; border-radius:50%; background:linear-gradient(135deg,#5ed7e0,#4fb5d4); display:flex; align-items:center; justify-content:center; margin:0 auto 24px;">
+      <i class="ti ti-sun" id="weather-icon" style="font-size:40px; color:#0a1628;" aria-hidden="true"></i>
+    </div>
+
+    <button id="checkBtn" onclick="getWeather()" style="background:linear-gradient(135deg,#5ed7e0,#4fb5d4); color:#0a1628; border:none; cursor:pointer; padding:13px 32px; border-radius:999px; font-size:15px; font-weight:600; margin-bottom:28px;">
+      Check Weather
+    </button>
+
+    <div id="error-msg" style="display:none; color:#f09595; font-size:13px; margin-bottom:16px;"></div>
+
+    <div id="result" style="display:none;">
+      <div style="font-size:72px; font-weight:700; background:linear-gradient(135deg,#5ed7e0,#b5f0f5); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1;" id="temp-display">--</div>
+      <div style="font-size:15px; color:#8aa6c4; margin-top:4px; margin-bottom:24px;" id="condition-display">--</div>
+
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:10px;">
+        <div style="background:rgba(255,255,255,0.05); border:0.5px solid rgba(120,200,230,0.15); border-radius:14px; padding:14px 8px;">
+          <i class="ti ti-droplet" style="font-size:20px; color:#5ed7e0;" aria-hidden="true"></i>
+          <div style="font-size:11px; color:#8aa6c4; text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;">Humidity</div>
+          <div style="font-size:15px; font-weight:500; color:#e6f1ff; margin-top:2px;" id="humidity-display">--%</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border:0.5px solid rgba(120,200,230,0.15); border-radius:14px; padding:14px 8px;">
+          <i class="ti ti-wind" style="font-size:20px; color:#5ed7e0;" aria-hidden="true"></i>
+          <div style="font-size:11px; color:#8aa6c4; text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;">Wind</div>
+          <div style="font-size:15px; font-weight:500; color:#e6f1ff; margin-top:2px;" id="wind-display">-- km/h</div>
+        </div>
+        <div style="background:rgba(255,255,255,0.05); border:0.5px solid rgba(120,200,230,0.15); border-radius:14px; padding:14px 8px;">
+          <i class="ti ti-eye" style="font-size:20px; color:#5ed7e0;" aria-hidden="true"></i>
+          <div style="font-size:11px; color:#8aa6c4; text-transform:uppercase; letter-spacing:0.06em; margin-top:6px;">Feels like</div>
+          <div style="font-size:15px; font-weight:500; color:#e6f1ff; margin-top:2px;" id="feels-display">--°C</div>
+        </div>
+      </div>
+
+      <div style="margin-top:16px; font-size:12px; color:#8aa6c4;" id="coords-display"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const WEATHER_CODES = {
+  0:'Clear sky', 1:'Mainly clear', 2:'Partly cloudy', 3:'Overcast',
+  45:'Foggy', 48:'Icy fog', 51:'Light drizzle', 53:'Drizzle', 55:'Heavy drizzle',
+  61:'Light rain', 63:'Rain', 65:'Heavy rain', 71:'Light snow', 73:'Snow', 75:'Heavy snow',
+  80:'Light showers', 81:'Showers', 82:'Heavy showers', 95:'Thunderstorm', 99:'Hail storm'
+};
+const WEATHER_ICONS = {
+  0:'ti-sun', 1:'ti-sun', 2:'ti-cloud-sun', 3:'ti-cloud',
+  45:'ti-mist', 48:'ti-mist', 51:'ti-cloud-drizzle', 53:'ti-cloud-drizzle', 55:'ti-cloud-drizzle',
+  61:'ti-cloud-rain', 63:'ti-cloud-rain', 65:'ti-cloud-rain', 71:'ti-snowflake', 73:'ti-snowflake', 75:'ti-snowflake',
+  80:'ti-cloud-rain', 81:'ti-cloud-rain', 82:'ti-cloud-rain', 95:'ti-cloud-storm', 99:'ti-cloud-storm'
+};
+
+async function getWeather() {
+  const btn = document.getElementById('checkBtn');
+  const errMsg = document.getElementById('error-msg');
+  errMsg.style.display = 'none';
+  btn.textContent = 'Getting location...';
+  btn.disabled = true;
+
+  if (!navigator.geolocation) {
+    showError('Geolocation not supported by your browser.');
+    btn.textContent = 'Check Weather'; btn.disabled = false; return;
+  }
+
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    btn.textContent = 'Fetching weather...';
+
+    try {
+      const res = await fetch("https://weather-server-npla.onrender.com/weather", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({lat, lon})
+      });
+      const data = await res.json();
+
+      const code = data.weathercode ?? 0;
+      const icon = WEATHER_ICONS[code] ?? 'ti-sun';
+      const condition = WEATHER_CODES[code] ?? 'Clear';
+
+      document.getElementById('weather-icon').className = `ti ${icon}`;
+      document.getElementById('temp-display').textContent = Math.round(data.temperature) + '°C';
+      document.getElementById('condition-display').textContent = condition;
+      document.getElementById('wind-display').textContent = Math.round(data.windspeed) + ' km/h';
+      document.getElementById('feels-display').textContent = Math.round(data.temperature - 2) + '°C';
+      document.getElementById('humidity-display').textContent = '~65%';
+      document.getElementById('coords-display').textContent = `📍 ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+
+      try {
+        const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+        const geoData = await geoRes.json();
+        const city = geoData.address.city || geoData.address.town || geoData.address.village || 'Your Location';
+        document.getElementById('location-name').textContent = city;
+      } catch(e) {}
+
+      document.getElementById('result').style.display = 'block';
+      btn.textContent = 'Refresh';
+      btn.disabled = false;
+    } catch(e) {
+      showError('Could not connect to weather server. Try again.');
+      btn.textContent = 'Check Weather'; btn.disabled = false;
+    }
+  }, () => {
+    showError('Location access denied. Please allow location in your browser.');
+    btn.textContent = 'Check Weather'; btn.disabled = false;
+  });
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+</script>
